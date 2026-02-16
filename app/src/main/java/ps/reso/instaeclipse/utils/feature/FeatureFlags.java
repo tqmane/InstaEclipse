@@ -45,6 +45,7 @@ public class FeatureFlags {
     public static boolean disableStoryFlipping = false;
     public static boolean disableVideoAutoPlay = false;
     public static boolean showFollowerToast = false;
+    public static boolean showStoryHiddenToast = false;
     public static boolean showFeatureToasts = false;
 
 

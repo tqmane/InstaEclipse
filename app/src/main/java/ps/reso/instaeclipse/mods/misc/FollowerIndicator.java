@@ -24,16 +24,20 @@ public class FollowerIndicator {
     public FollowMethodResult findFollowerStatusMethod(DexKitBridge bridge) {
         try {
 
-            // Step 1:  Get the second Boolean method in FriendshipStatus
+            // Step 1:  Get the Boolean methods in FriendshipStatus
             try {
 
                 // Find all methods declared inside com.instagram.user.model.FriendshipStatus
                 List<MethodData> friendshipMethods = bridge.findMethod(FindMethod.create().matcher(MethodMatcher.create().declaredClass("com.instagram.user.model.FriendshipStatus").returnType("java.lang.Boolean")));
 
                 if (friendshipMethods.size() >= 2) {
-                    MethodData followedByMethod = friendshipMethods.get(1); // 2nd Boolean-returning method = followed_by (BeA)
+                    MethodData followedByMethod = friendshipMethods.get(1); // 2nd Boolean-returning method = followed_by
+                    String isBlockingReelMethod = null;
+                    if (friendshipMethods.size() >= 14) {
+                        isBlockingReelMethod = friendshipMethods.get(13).getName(); // 14th Boolean-returning method = is_blocking_reel
+                    }
                     type = "default";
-                    return new FollowMethodResult(followedByMethod.getName(), followedByMethod.getClassName());
+                    return new FollowMethodResult(followedByMethod.getName(), isBlockingReelMethod, followedByMethod.getClassName());
                 }
 
             } catch (Throwable ignore) {
@@ -58,7 +62,7 @@ public class FollowerIndicator {
 
                             if (className.contains(obfUserClass) && returnType.contains("boolean")) {
                                 type = "fallback - 1";
-                                return new FollowMethodResult(invoked.getName(), obfUserClass);
+                                return new FollowMethodResult(invoked.getName(), null, obfUserClass);
                             }
                         }
                     }
@@ -79,7 +83,7 @@ public class FollowerIndicator {
                         for (MethodData invoked : method.getInvokes()) {
                             if (invoked.getClassName().contains("com.instagram.user.model.User") && String.valueOf(invoked.getReturnType()).contains("boolean")) {
                                 type = "fallback - 2";
-                                return new FollowMethodResult(invoked.getName(), "com.instagram.user.model.User");
+                                return new FollowMethodResult(invoked.getName(), null, "com.instagram.user.model.User");
                             }
                         }
                     }
@@ -142,7 +146,7 @@ public class FollowerIndicator {
         return null;
     }
 
-    public void checkFollow(ClassLoader classLoader, String followerStatusMethod, String userClassName, String userIdClassName) {
+    public void checkFollow(ClassLoader classLoader, String followerStatusMethod, String isBlockingReelMethod, String userClassName, String userIdClassName) {
         try {
 
             final String[] userId = {null};
@@ -170,6 +174,8 @@ public class FollowerIndicator {
             }
 
             String finalUserClassName = userClassName;
+            
+            // Hook Follower Status
             XposedHelpers.findAndHookMethod(userClassName, classLoader, followerStatusMethod, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
@@ -194,7 +200,7 @@ public class FollowerIndicator {
                     Boolean followsMe = (Boolean) param.getResult();
                     String targetId = ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId;
                     try {
-                        if (userId[0].equals(targetId)) {
+                        if (userId[0] != null && userId[0].equals(targetId) && ps.reso.instaeclipse.utils.feature.FeatureFlags.showFollowerToast) {
                             Context context = AndroidAppHelper.currentApplication().getApplicationContext();
                             String message;
                             if (username != null && !username.isEmpty()) {
@@ -203,7 +209,13 @@ public class FollowerIndicator {
                                 message = " (" + userId[0] + ") " + (followsMe ? "follows you ✅" : "doesn’t follow you ❌");
                             }
                             CustomToast.showCustomToast(context, message);
-                            ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId = null;
+                            
+                            // Nullify after a short delay to allow story hook to run
+                            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                                if (ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId != null && ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId.equals(userId[0])) {
+                                    ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId = null;
+                                }
+                            }, 2000);
                         }
                     } catch (Throwable ignore) {
 
@@ -211,6 +223,26 @@ public class FollowerIndicator {
 
                 }
             });
+
+            // Hook Story Hidden Status
+            if (isBlockingReelMethod != null) {
+                XposedHelpers.findAndHookMethod(userClassName, classLoader, isBlockingReelMethod, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Boolean isBlockingReel = (Boolean) param.getResult();
+                        String targetId = ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.currentlyViewedUserId;
+                        
+                        if (targetId != null && isBlockingReel != null && isBlockingReel && ps.reso.instaeclipse.utils.feature.FeatureFlags.showStoryHiddenToast) {
+                             if (!targetId.equals(ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.lastStoryToastId)) {
+                                 Context context = AndroidAppHelper.currentApplication().getApplicationContext();
+                                 CustomToast.showCustomToast(context, "This user has hidden their story from you! 🚫");
+                                 ps.reso.instaeclipse.utils.tracker.FollowIndicatorTracker.lastStoryToastId = targetId;
+                             }
+                        }
+                    }
+                });
+                FeatureStatusTracker.setHooked("ShowStoryHiddenToast");
+            }
 
 
             XposedBridge.log("(InstaEclipse | FollowerStatus): ✅ Hooked (" + type + "): " + userClassName + "." + followerStatusMethod);
@@ -223,10 +255,12 @@ public class FollowerIndicator {
 
     public static class FollowMethodResult {
         public final String methodName;
+        public final String isBlockingReelMethodName;
         public final String userClassName;
 
-        public FollowMethodResult(String methodName, String userClassName) {
+        public FollowMethodResult(String methodName, String isBlockingReelMethodName, String userClassName) {
             this.methodName = methodName;
+            this.isBlockingReelMethodName = isBlockingReelMethodName;
             this.userClassName = userClassName;
         }
     }

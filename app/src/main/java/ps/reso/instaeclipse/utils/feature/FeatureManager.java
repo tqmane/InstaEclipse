@@ -54,6 +54,12 @@ public class FeatureManager {
             FeatureStatusTracker.setDisabled("ShowFollowerToast");
         }
 
+        if (FeatureFlags.showStoryHiddenToast) {
+            FeatureStatusTracker.setEnabled("ShowStoryHiddenToast");
+        } else {
+            FeatureStatusTracker.setDisabled("ShowStoryHiddenToast");
+        }
+
         if (FeatureFlags.disableTrackingLinks) {
             FeatureStatusTracker.setEnabled("DisableTrackingLinks");
         } else {

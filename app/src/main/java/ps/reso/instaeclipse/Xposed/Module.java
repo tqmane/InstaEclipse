@@ -235,11 +235,11 @@ public class Module implements IXposedHookLoadPackage, IXposedHookZygoteInit {
                         FollowerIndicator followerIndicator = new FollowerIndicator();
                         FollowerIndicator.FollowMethodResult result = followerIndicator.findFollowerStatusMethod(Module.dexKitBridge);
 
-                        if (result != null && FeatureFlags.showFollowerToast) {
+                        if (result != null && (FeatureFlags.showFollowerToast || FeatureFlags.showStoryHiddenToast)) {
 
                             String userIdClass = followerIndicator.findUserIdClassIfNeeded(Module.dexKitBridge, result.userClassName);
 
-                            followerIndicator.checkFollow(hostClassLoader, result.methodName, result.userClassName, userIdClass);
+                            followerIndicator.checkFollow(hostClassLoader, result.methodName, result.isBlockingReelMethodName, result.userClassName, userIdClass);
 
                         } else {
                             XposedBridge.log("(InstaEclipse | FollowerToast): ❌ Method not found");
