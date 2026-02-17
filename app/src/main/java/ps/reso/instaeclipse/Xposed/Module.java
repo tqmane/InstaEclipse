@@ -29,6 +29,7 @@ import ps.reso.instaeclipse.mods.ghost.ViewOnce;
 import ps.reso.instaeclipse.mods.misc.AutoPlayDisable;
 import ps.reso.instaeclipse.mods.misc.FollowerIndicator;
 import ps.reso.instaeclipse.mods.misc.StoryFlipping;
+import ps.reso.instaeclipse.mods.misc.StoryHideDetector;
 import ps.reso.instaeclipse.mods.network.Interceptor;
 import ps.reso.instaeclipse.mods.ui.UIHookManager;
 import ps.reso.instaeclipse.utils.core.CommonUtils;
@@ -247,6 +248,16 @@ public class Module implements IXposedHookLoadPackage, IXposedHookZygoteInit {
                     } catch (Throwable e) {
 
                         XposedBridge.log("(InstaEclipse | FollowerToast): ❌ Failed to hook + " + e);
+                    }
+
+                    // Story Hide Detector
+                    try {
+                        if (FeatureFlags.showStoryHideToast) {
+                            StoryHideDetector storyHideDetector = new StoryHideDetector();
+                            storyHideDetector.findAndHookStoryHideMethods(Module.dexKitBridge, hostClassLoader);
+                        }
+                    } catch (Throwable e) {
+                        XposedBridge.log("(InstaEclipse | StoryHideDetector): ❌ Failed to hook: " + e.getMessage());
                     }
 
                     // Network Interceptor

@@ -60,6 +60,7 @@ public class SettingsManager {
         editor.putBoolean("disableRepost", FeatureFlags.disableRepost);
         editor.putBoolean("showFollowerToast", FeatureFlags.showFollowerToast);
         editor.putBoolean("showFeatureToasts", FeatureFlags.showFeatureToasts);
+        editor.putBoolean("showStoryHideToast", FeatureFlags.showStoryHideToast);
 
         editor.apply();
 
@@ -112,6 +113,7 @@ public class SettingsManager {
         FeatureFlags.disableRepost = prefs.getBoolean("disableRepost", false);
         FeatureFlags.showFollowerToast = prefs.getBoolean("showFollowerToast", false);
         FeatureFlags.showFeatureToasts = prefs.getBoolean("showFeatureToasts", false);
+        FeatureFlags.showStoryHideToast = prefs.getBoolean("showStoryHideToast", false);
 
         FeatureManager.refreshFeatureStatus();
     }

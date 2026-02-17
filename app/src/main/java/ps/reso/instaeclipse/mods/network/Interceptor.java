@@ -153,12 +153,18 @@ public class Interceptor {
                                         XposedBridge.log("Logging: " + uri.getHost() + uri.getPath());
                                     }
 
-                                    if (FeatureFlags.showFollowerToast) {
+                                    // Track user ID for FollowerToast and StoryHideToast
+                                    if (FeatureFlags.showFollowerToast || FeatureFlags.showStoryHideToast) {
                                         if (uri.getPath() != null && uri.getPath().startsWith("/api/v1/friendships/show/")) {
                                             String[] parts = uri.getPath().split("/");
-                                            if (parts.length >= 5) {
+                                            if (parts.length >= 6) {
                                                 // Extracted ID from /api/v1/friendships/show/{id}
+                                                // parts[0] = "", parts[1] = "api", parts[2] = "v1", parts[3] = "friendships", parts[4] = "show", parts[5] = "{id}"
                                                 FollowIndicatorTracker.currentlyViewedUserId = parts[5];
+                                                // Clear the shown users cache when viewing a new profile
+                                                if (FeatureFlags.showStoryHideToast) {
+                                                    ps.reso.instaeclipse.mods.misc.StoryHideDetector.clearShownUsersCache();
+                                                }
                                             }
                                         }
                                     }
