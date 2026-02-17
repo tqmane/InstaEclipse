@@ -157,10 +157,12 @@ public class Interceptor {
                                     if (FeatureFlags.showFollowerToast || FeatureFlags.showStoryHideToast) {
                                         if (uri.getPath() != null && uri.getPath().startsWith("/api/v1/friendships/show/")) {
                                             String[] parts = uri.getPath().split("/");
+                                            XposedBridge.log("(InstaEclipse | Interceptor) friendships/show path: " + uri.getPath() + ", parts.length=" + parts.length);
                                             if (parts.length >= 6) {
                                                 // Extracted ID from /api/v1/friendships/show/{id}
                                                 // parts[0] = "", parts[1] = "api", parts[2] = "v1", parts[3] = "friendships", parts[4] = "show", parts[5] = "{id}"
                                                 FollowIndicatorTracker.currentlyViewedUserId = parts[5];
+                                                XposedBridge.log("(InstaEclipse | Interceptor) Set currentlyViewedUserId = " + parts[5]);
                                                 // Clear the shown users cache when viewing a new profile
                                                 if (FeatureFlags.showStoryHideToast) {
                                                     ps.reso.instaeclipse.mods.misc.StoryHideDetector.clearShownUsersCache();
